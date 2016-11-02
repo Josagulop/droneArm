@@ -10,7 +10,7 @@ const double pi = 3.1415;
 Servo servo1,servo2,servo3,servo4,servo5;
 
 // Reading values
-int x,y,angle;
+double x,y,z,angle;
 char order;
 
 // Initial positions
@@ -19,6 +19,18 @@ const int initialPositionServo2 = 0;
 const int initialPositionServo3 = 0;
 const int initialPositionServo4 = 100;
 const int initialPositionServo5 = 90;
+
+// Destination
+int positionServo1 = initialPositionServo1;
+int positionServo2 = initialPositionServo2;
+int positionServo3 = initialPositionServo3;
+int positionServo4 = initialPositionServo4;
+
+// Actual position
+int actualPosition1 = initialPositionServo1;
+int actualPosition2 = initialPositionServo2;
+int actualPosition3 = initialPositionServo3;
+int actualPosition4 = initialPositionServo4;
 
 // Possibles position for Servo5 (claw)
 const int clawOpen = 0;
@@ -32,14 +44,33 @@ const double bar3 = 28;
 int servoDelay = 100;
 
 // Time for closing/opening the claw and flag to know its state
-const int timeClaw = 4500;
+const int timeClaw = 4500; // Default time
+int timeClawReceived = timeClaw;
+
+// Flags for indicate the last position type introduced
+int followXYZ = 0;
+int followAngle = 0;
 
 // Flag of the state of the claw, initially open
-int clawFlag = clawOpen;
+//int clawFlag = clawOpen;
 
 // Step for servos increments or decrements
-int servoStep = 3;
+int servoStep = 1;
 
+// Constant values for servos 2 y 3
+const double losenessServo2 = 15;
+const double losenessServo3 = 20;
+
+// Possible cases for reading data or show messages
+const int caseOrder = 0;
+const int instruction = 1;
+const int caseAngle = 2;
+const int case3D = 3;
+const int caseClaw = 4;
+const int caseHome = 5;
+const int caseStep = 6;
+const int caseInfoStep = 7;
+const int caseClawTime = 8;
 
 void setup() {  
   // Attaches the servos to the Arduino pines
@@ -62,87 +93,106 @@ void setup() {
 
 
 void loop() {
-  // Shows the commands for the arm
-  Serial.print("Waiting for an order: \n");
-  Serial.print("A -> new position in the plane of the bars 2 & 3 \n");
-  Serial.print("P -> new position with coordenates x, y, z \n");
-  Serial.print("C -> modify the claw state \n");
-  Serial.print("H -> home position \n");
-  Serial.print("S -> modify the step of the servos movement \n\n");
 
-  // Waits for an order
-  while(!Serial.available());
-  order = Serial.read();
+//  showMessage(instruction);
+  readSerial(caseOrder);
 
   if( order == 'A' || order == 'a' ){
     
-    Serial.print("Introduce three integers: x, y, angle \n");  
-      
-    readSerial(x,y,angle);
-    
-    Serial.print("x = ");
-    Serial.println(x);
-    Serial.print("y = ");
-    Serial.println(y);
-    Serial.print("Angle = ");
-    Serial.println(angle);
-
-    Serial.print("\n\n");
-    
-    inverseKinematic(x,y,angle);
+    showMessage(caseAngle);  
+    readSerial(caseAngle);    
+//    inverseKinematic(x,y,angle); 
+    followAngle = 1;   
     
   }else if( order == 'P' || order == 'p' ){
     
-    Serial.print("Introduces three integers: x, y, z \n");
-
-    readSerial(x,y,angle);
-
-    inverseKinematic3D(x,y,angle);
-    
+    showMessage(case3D);
+    readSerial(case3D);
+//    inverseKinematic3D(x,y,z);  
+    followXYZ = 1;
+      
   }else if( order == 'C' || order == 'c' ){
     
-    Serial.print("Introduce 0 or 1: \n");
-    Serial.print("0 -> close the claw\n");
-    Serial.print("1 -> open the claw\n\n");
+    showMessage(caseClaw);
     clawState();
+    
   }
   else if( order == 'H' || order == 'h' ){
-    Serial.print("Going back home... \n");
+    
+    showMessage(caseHome);
     home();
-    Serial.print("There is no place like home \n\n");
+   
   }
-  else if( order == 'S' || order =='s' ){
-    Serial.print("Introduce an integer: the new servoStep\n");
-    Serial.print("Previous step: ");
-    Serial.println(servoStep);
-    while(!Serial.available());
-    servoStep = Serial.parseInt();
-    Serial.print("New step: ");
-    Serial.println(servoStep);
-    Serial.print("\n\n");
+  else if( order == 'S' || order == 's' ){
+    
+    showMessage(caseStep);    
+    readSerial(caseStep);
+    showMessage(caseInfoStep);
+    
+  }else if( order == 'T' || order == 't' ){
+    showMessage(caseClawTime);
+    readSerial(caseClawTime);
+    clawState();
+    timeClawReceived = timeClaw;
   }
+
+  if( followXYZ ){
+    inverseKinematic3D(x,y,z); 
+  }else if( followAngle ){
+    inverseKinematic(x,y,angle); 
+  }
+
+  aproxPosition(actualPosition1,positionServo1);
+  servo1.write(actualPosition1);
+  
+  aproxPosition(actualPosition2,positionServo2);
+  servo2.write(actualPosition2);
+        
+  aproxPosition(actualPosition3,positionServo3);
+  servo3.write(actualPosition3);
+        
+  aproxPosition(actualPosition4,positionServo4);
+  servo4.write(actualPosition4);
+    
+  delay(servoDelay);
+  
 }
 
-
-// Reads data (x,y,angle) refered to a point
-void readSerial(int &x,int &y,int &angle)
+// Reads data
+void readSerial(int readingCase)
 {
-  // Waits for data
-  while(!Serial.available());
-
-  // Reads data: x, y, angle
-  x = Serial.parseInt();
-  y = Serial.parseInt();
-  angle = Serial.parseInt();  
+  switch(readingCase){
+    case caseOrder:
+//      while(!Serial.available());
+      order = Serial.read();
+      break;
+    case caseAngle:
+//      while(!Serial.available());
+      x = Serial.parseFloat();
+      y = Serial.parseFloat();
+      angle = Serial.parseFloat(); 
+      break;
+    case case3D:
+//      while(!Serial.available());
+      x = Serial.parseFloat();
+      y = Serial.parseFloat();
+      z = Serial.parseFloat();
+      break;
+    case caseStep:
+//      while(!Serial.available());
+      servoStep = Serial.parseInt();
+      break;
+    case caseClawTime:
+//      while(!Serial.available());
+      timeClawReceived = Serial.parseInt();
+      break;
+  }
 }
-
 
 // Calculates the positions 
 // of each servo for the point (x,y,angle)
-void inverseKinematic(int x,int y,int angle)
+void inverseKinematic(double x,double y,double angle)
 { 
-  x = -x; // Just for convenience to the axe 
-
   // Virtual bar, equal to the distance between
   // the given point and zero 
   double barAux = sqrt(pow(x,2) + pow(y,2));
@@ -152,7 +202,7 @@ void inverseKinematic(int x,int y,int angle)
   }
   
   // Coordenate q1
-  int positionServo1 = angle; 
+  positionServo1 = angle + initialPositionServo1; 
 
   // Coordenate q2
   
@@ -162,26 +212,32 @@ void inverseKinematic(int x,int y,int angle)
   double alfa = atan2(y,x);
   radians2degrees(alfa);
   
-  int positionServo2 = alfa - gamma;
+  positionServo2 = 180 - alfa - gamma + losenessServo2;
 
   // Coordenate q3
-  double positionServo3 = acos( (pow(barAux,2)-pow(bar2,2)-pow(bar3,2)) / (-2*bar2*bar3) );
-  radians2degrees(positionServo3);
+  double theta = acos( (pow(barAux,2)-pow(bar2,2)-pow(bar3,2)) / (-2*bar2*bar3) );
+  radians2degrees(theta);
+
+  positionServo3 = theta - losenessServo3;
 
   // Coordenate q4
-  int positionServo4 = initialPositionServo4; // Por definir
+  positionServo4 = initialPositionServo4; // Por definir
   
   // Applies new position
-  newPosition(positionServo1,positionServo2,positionServo3,positionServo4);
+//  newPosition(positionServo1,positionServo2,positionServo3,positionServo4);
+  
+  followAngle = 0;
 }
 
-void inverseKinematic3D(int x,int y,int z)
+// Calculates the positions 
+// of each servo for the point (x,y,z)
+void inverseKinematic3D(double x,double y,double z)
 {
   // Coordenate q1
   double phi = atan2(y,x);
   radians2degrees(phi);
   
-  int positionServo1 = phi;
+  positionServo1 = phi + initialPositionServo1;
     
   // Coordenate q2
   double p = sqrt(pow(x,2)+pow(y,2));
@@ -196,28 +252,30 @@ void inverseKinematic3D(int x,int y,int z)
   double gamma = acos( (pow(bar3,2)-pow(d,2)-pow(bar2,2)) / ( -2*d*bar2 ) );
   radians2degrees(gamma);
 
-  int positionServo2 = alfa - gamma;
+  positionServo2 = 180 - alfa - gamma + losenessServo2;
 
   // Coordenate q3
   double omega = acos( (pow(d,2)-pow(bar2,2)-pow(bar3,2)) / (-2*bar2*bar3) );
   radians2degrees(omega);
   
-  int positionServo3 = omega;
+  positionServo3 = omega - losenessServo3;
 
   // Coordenate q4
-  int positionServo4 = initialPositionServo4;
+  positionServo4 = initialPositionServo4;
 
   // Applies new position
-  newPosition(positionServo1,positionServo2,positionServo3,positionServo4);
+//  newPosition(positionServo1,positionServo2,positionServo3,positionServo4);
+
+  followXYZ = 0;
 }
 
 
 // Applies a new position to the servos
-void newPosition(int positionServo1,int positionServo2,int positionServo3,int positionServo4,int positionServo5)
-{
-  writeSlow(servo1,servo2,servo3,servo4,positionServo1,positionServo2,positionServo3,positionServo4);
-  servo5.write(positionServo5);
-}
+//void newPosition(int positionServo1,int positionServo2,int positionServo3,int positionServo4,int positionServo5)
+//{
+//  writeSlow(servo1,servo2,servo3,servo4,positionServo1,positionServo2,positionServo3,positionServo4);
+//  servo5.write(positionServo5);
+//}
 
 void newPosition(int positionServo1,int positionServo2,int positionServo3,int positionServo4)
 {
@@ -226,7 +284,7 @@ void newPosition(int positionServo1,int positionServo2,int positionServo3,int po
 
 void newPosition(int positionServo5)
 {
-  if( clawFlag!=positionServo5 ){
+//  if( clawFlag!=positionServo5 ){
       
     unsigned long timeStart,timeFinish;
 
@@ -235,16 +293,14 @@ void newPosition(int positionServo5)
     timeStart = millis();
     timeFinish = millis();
 
-    while(timeFinish-timeStart < timeClaw){
+    while(timeFinish-timeStart < timeClawReceived){
         timeFinish = millis();
     }
 
     servo5.write(initialPositionServo5);
 
-    clawFlag = positionServo5;
-  }
-
-  
+//    clawFlag = positionServo5;
+//  }  
 }
 
 
@@ -277,10 +333,16 @@ void clawState()
 // Returns to the initial position
 void home()
 {
-  newPosition(initialPositionServo1,initialPositionServo2,initialPositionServo3,initialPositionServo4,initialPositionServo5); 
-  if( clawFlag==clawClose ){
-      newPosition(clawOpen);
-  }
+//  newPosition(initialPositionServo1,initialPositionServo2,initialPositionServo3,initialPositionServo4,initialPositionServo5); 
+//  newPosition(initialPositionServo1,initialPositionServo2,initialPositionServo3,initialPositionServo4); 
+//  if( clawFlag==clawClose ){
+//      newPosition(clawOpen);
+//  }
+
+ positionServo1 = initialPositionServo1;
+ positionServo2 = initialPositionServo2;
+ positionServo3 = initialPositionServo3;
+ positionServo4 = initialPositionServo4;
 }
 
 
@@ -317,13 +379,12 @@ void radians2degrees(double &angle)
 
 
 // Writes the new position gradually, in a slow manner
-
 void writeSlow(Servo servo1,Servo servo2,Servo servo3,Servo servo4,int newPosition1,int newPosition2,int newPosition3,int newPosition4)
 { 
-  int actualPosition1 = servo1.read();
-  int actualPosition2 = servo2.read();
-  int actualPosition3 = servo3.read();
-  int actualPosition4 = servo4.read();
+  actualPosition1 = servo1.read();
+  actualPosition2 = servo2.read();
+  actualPosition3 = servo3.read();
+  actualPosition4 = servo4.read();
   
   while( actualPosition1 != newPosition1 || actualPosition2 != newPosition2 
   || actualPosition3 != newPosition3 || actualPosition4 != newPosition4 ){
@@ -348,7 +409,6 @@ void writeSlow(Servo servo1,Servo servo2,Servo servo3,Servo servo4,int newPositi
 // Auxiliar function for writeSlow: reduces or increases
 // the actual position of the Servo to approaches it 
 // to the deserves position by servoStep step
-
 void aproxPosition(int &actualPosition,int newPosition)
 {
   if( actualPosition > newPosition ){
@@ -358,3 +418,52 @@ void aproxPosition(int &actualPosition,int newPosition)
     actualPosition = constrain(actualPosition+servoStep,actualPosition,newPosition);
   }
 }
+
+
+// Shows info and instruction messages
+void showMessage(int typeMessage)
+{
+  switch(typeMessage){
+    case instruction:
+      // Shows the commands for the arm
+      Serial.print("Waiting for an order: \n");
+      Serial.print("A -> new position in the plane of the bars 2 & 3 \n");
+      Serial.print("P -> new position with coordenates x, y, z \n");
+      Serial.print("C -> modify the claw state \n");
+      Serial.print("T -> modify the claw state during a given time \n");
+      Serial.print("H -> home position \n");
+      Serial.print("S -> modify the step of the servos movement \n\n");
+      break;
+    case caseAngle:
+      Serial.print("Introduce three integers: x, y, angle \n"); 
+      break;
+    case case3D:
+      Serial.print("Introduces three integers: x, y, z \n");
+      break;
+    case caseClaw:
+      Serial.print("Introduce 0 or 1: \n");
+      Serial.print("0 -> close the claw\n");
+      Serial.print("1 -> open the claw\n\n");
+      break;
+    case caseHome:
+      Serial.print("Going back home \n");
+      break;
+    case caseStep:
+      Serial.print("Introduce an integer: the new servoStep\n");
+      Serial.print("Previous step: ");
+      Serial.println(servoStep);
+      break;
+    case caseInfoStep:
+      Serial.print("New step: ");
+      Serial.println(servoStep);
+      Serial.print("\n\n");
+      break;
+    case caseClawTime:
+      Serial.print("First, introduce the time desired in miliseconds (integer)\n");
+      Serial.print("Then, introduce 0 or 1: \n");
+      Serial.print("0 -> close the claw\n");
+      Serial.print("1 -> open the claw\n\n");
+      break;
+  }
+}
+
