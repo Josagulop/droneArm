@@ -4,7 +4,7 @@
 #include<time.h>
 
 // Number Pi
-const double pi = 3.1415;
+const double pi = 3.14159265359;
 
 // Servo objects
 Servo servo1,servo2,servo3,servo4,servo5;
