@@ -41,10 +41,10 @@ const double bar2 = 13.5;
 const double bar3 = 28;
 
 // Delay for servos writing
-int servoDelay = 100;
+int servoDelay = 20;
 
 // Time for closing/opening the claw
-const int timeClaw = 4500; // Default time
+const int timeClaw = 20000; // Default time
 int timeClawReceived = timeClaw;
 
 // Flags for indicate what inverse kinematic use
@@ -56,7 +56,7 @@ int servoStep = 1;
 
 // Loseness of the servos 2 and 3
 const double losenessServo2 = 15;
-const double losenessServo3 = 20;
+const double losenessServo3 = 15;
 
 // Possible cases for reading data or show messages
 const int caseOrder = 0;
@@ -227,6 +227,7 @@ void inverseKinematic3D(double x,double y,double z)
   }
 
   double alfa = atan2(z,p);
+  radians2degrees(alfa);
 
   double gamma = acos( (pow(bar3,2)-pow(d,2)-pow(bar2,2)) / ( -2*d*bar2 ) );
   radians2degrees(gamma);
