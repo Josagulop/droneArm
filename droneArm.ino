@@ -26,37 +26,39 @@ void setup() {
 
 
 void loop() {
-  char order = Serial.read();
-  double x, y, z, angle;
-  if( order == 'A' || order == 'a' ){
-    x = Serial.parseFloat();
-    y = Serial.parseFloat();
-    angle = Serial.parseFloat(); 
-
-    double globalX = x*cos(angle/180.0*pi);
-    double globalY = x*sin(angle/180.0*pi);
-    double globalZ = y;
-    droneArm.move(globalX, globalY, globalZ);
-  }else if( order == 'P' || order == 'p' ){
-    x = Serial.parseFloat();
-    y = Serial.parseFloat();
-    z = Serial.parseFloat();
-    droneArm.move(x, y, z);  
-  }else if( order == 'C' || order == 'c' ){
-    int gripperState = Serial.parseInt();
-    if(gripperState == 0){
-      droneArm.stopGripper();
-    }else if(gripperState == 1){
-      droneArm.openGripper();
-    }else if(gripperState == 2){
-      droneArm.closeGripper();
+  if(Serial.available()){
+    char order = Serial.read();
+    double x, y, z, angle;
+    if( order == 'A' || order == 'a' ){
+      x = Serial.parseFloat();
+      y = Serial.parseFloat();
+      angle = Serial.parseFloat(); 
+  
+      double globalX = x*cos(angle/180.0*pi);
+      double globalY = x*sin(angle/180.0*pi);
+      double globalZ = y;
+      droneArm.move(globalX, globalY, globalZ);
+    }else if( order == 'P' || order == 'p' ){
+      x = Serial.parseFloat();
+      y = Serial.parseFloat();
+      z = Serial.parseFloat();
+      droneArm.move(x, y, z);  
+    }else if( order == 'C' || order == 'c' ){
+      int gripperState = Serial.parseInt();
+      if(gripperState == 0){
+        droneArm.stopGripper();
+      }else if(gripperState == 1){
+        droneArm.openGripper();
+      }else if(gripperState == 2){
+        droneArm.closeGripper();
+      }
     }
-  }
-  else if( order == 'H' || order == 'h' ){
-    droneArm.home();
-  }
-  else if( order == 'S' || order == 's' ){  
-    droneArm.speed(Serial.parseInt());
+    else if( order == 'H' || order == 'h' ){
+      droneArm.home();
+    }
+    else if( order == 'S' || order == 's' ){  
+      droneArm.speed(Serial.parseInt());
+    }
   }
 }
 
